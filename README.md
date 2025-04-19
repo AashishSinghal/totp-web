@@ -376,6 +376,81 @@ A utility class for implementing rate limiting to prevent brute force attacks.
 - `getRemainingAttempts(key: string): number`: Get the number of remaining attempts for a key
 - `getTimeUntilReset(key: string): number`: Get the time in milliseconds until the rate limit resets for a key
 
+## Development Utilities
+
+The package includes several development utilities to help with common TOTP operations:
+
+```typescript
+import { TOTPUtils } from 'totp-web';
+
+// Generate a random secret key
+const secret = TOTPUtils.generateSecret();
+
+// Generate backup codes for account recovery
+const backupCodes = TOTPUtils.generateBackupCodes(8, 8);
+
+// Test TOTP configuration
+const isValid = await TOTPUtils.testConfiguration({
+  algorithm: 'SHA-256',
+  digits: 6,
+  period: 30
+});
+
+// Format time remaining
+const timeRemaining = TOTPUtils.formatTimeRemaining(29); // "29s"
+
+// Validate configuration
+const validation = TOTPUtils.validateConfiguration({
+  algorithm: 'SHA-256',
+  digits: 6,
+  period: 30
+});
+```
+
+## CLI Tool
+
+The package includes a command-line interface for testing and debugging TOTP tokens:
+
+```bash
+# Install globally
+npm install -g totp-web
+
+# Generate a new TOTP token
+totp-web generate
+totp-web generate --algorithm SHA-256 --digits 8
+
+# Verify a TOTP token
+totp-web verify ABC123 --secret JBSWY3DPEHPK3PXP
+
+# Generate a TOTP auth URI
+totp-web uri --secret JBSWY3DPEHPK3PXP --accountName user@example.com --issuer Example
+```
+
+### CLI Options
+
+#### Generate Command
+- `--secret <secret>`: Secret key (optional, will generate if not provided)
+- `--algorithm <algo>`: Algorithm (SHA-1, SHA-256, SHA-512)
+- `--digits <number>`: Number of digits (default: 6)
+- `--period <seconds>`: Period in seconds (default: 30)
+- `--charSet <chars>`: Custom character set
+
+#### Verify Command
+- `--secret <secret>`: Secret key (required)
+- `--algorithm <algo>`: Algorithm (SHA-1, SHA-256, SHA-512)
+- `--digits <number>`: Number of digits (default: 6)
+- `--period <seconds>`: Period in seconds (default: 30)
+- `--charSet <chars>`: Custom character set
+- `--window <number>`: Time window for verification (default: 1)
+
+#### URI Command
+- `--secret <secret>`: Secret key (required)
+- `--accountName <name>`: Account name (required)
+- `--issuer <name>`: Issuer name (optional)
+- `--algorithm <algo>`: Algorithm (SHA-1, SHA-256, SHA-512)
+- `--digits <number>`: Number of digits (default: 6)
+- `--period <seconds>`: Period in seconds (default: 30)
+
 ## Examples
 
 ### Setting Up 2FA for a User

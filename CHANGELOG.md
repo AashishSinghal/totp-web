@@ -62,3 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed documentation for API parameters and return types
 - Corrected example code to match current API implementation
+
+## [1.4.0] - 2024-04-19
+
+### Added
+- Development utilities for common TOTP operations:
+  - `TOTPUtils.generateSecret()`: Generate random secret keys
+  - `TOTPUtils.generateBackupCodes()`: Generate backup codes for account recovery
+  - `TOTPUtils.testConfiguration()`: Test TOTP configuration
+  - `TOTPUtils.formatTimeRemaining()`: Format time remaining until next token
+  - `TOTPUtils.validateConfiguration()`: Validate TOTP configuration options
+- CLI tool for testing and debugging:
+  - `generate` command: Generate new TOTP tokens
+  - `verify` command: Verify TOTP tokens
+  - `uri` command: Generate TOTP auth URIs
+  - Support for all TOTP configuration options
+  - Helpful error messages and documentation

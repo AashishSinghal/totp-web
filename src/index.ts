@@ -248,3 +248,5 @@ export class RateLimiter {
     return this.windowMs - timeElapsed;
   }
 }
+
+export { TOTPUtils } from './utils';
