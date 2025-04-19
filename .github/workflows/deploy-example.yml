@@ -28,12 +28,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install and build main package
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install demo dependencies
         run: |
           cd examples/react-demo
           npm ci
 
-      - name: Build
+      - name: Build demo
         run: |
           cd examples/react-demo
           npm run build
