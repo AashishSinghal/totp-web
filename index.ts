@@ -29,6 +29,17 @@ function intToBytes(num: number): Uint8Array {
   return new Uint8Array(buf);
 }
 
+function generateRandomSecret(): string {
+  const bytes = new Uint8Array(20);
+  crypto.getRandomValues(bytes);
+  const base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let secret = "";
+  for (let i = 0; i < bytes.length; i++) {
+    secret += base32Chars[bytes[i] % 32];
+  }
+  return secret;
+}
+
 async function generateHOTP(secret: string, counter: number): Promise<string> {
   const keyData = toUint8Array(secret);
   const key = await crypto.subtle.importKey(
@@ -53,23 +64,56 @@ async function generateHOTP(secret: string, counter: number): Promise<string> {
   return (code % 10 ** 6).toString().padStart(6, "0");
 }
 
-export async function generateTOTP(
-  secret: string,
-  window: number = 0,
-): Promise<string> {
-  const counter = Math.floor(Date.now() / 1000 / 30) + window;
-  return generateHOTP(secret, counter);
+interface TOTPOptions {
+  secret?: string;
+  window?: number;
+}
+
+interface TOTPResult {
+  token: string;
+  secret: string;
+  remainingSeconds: number;
+}
+
+export async function generateTOTP(options: TOTPOptions = {}): Promise<TOTPResult> {
+  const secret = options.secret || generateRandomSecret();
+  const window = options.window || 0;
+  const currentTime = Math.floor(Date.now() / 1000);
+  const counter = Math.floor(currentTime / 30) + window;
+  const token = await generateHOTP(secret, counter);
+  const remainingSeconds = 30 - (currentTime % 30);
+
+  return {
+    token,
+    secret,
+    remainingSeconds,
+  };
 }
 
 export async function verifyTOTP(
-  secret: string,
   token: string,
-  window: number = 1,
+  options: { secret: string; window?: number },
 ): Promise<boolean> {
+  const { secret, window = 1 } = options;
   const current = Math.floor(Date.now() / 1000 / 30);
+  
   for (let errorWindow = -window; errorWindow <= window; errorWindow++) {
     const expected = await generateHOTP(secret, current + errorWindow);
     if (expected === token) return true;
   }
   return false;
+}
+
+export function getTOTPAuthUri(options: {
+  secret: string;
+  accountName: string;
+  issuer?: string;
+}): string {
+  const { secret, accountName, issuer } = options;
+  const params = new URLSearchParams({
+    secret,
+    ...(issuer ? { issuer } : {}),
+  });
+  const label = issuer ? `${issuer}:${accountName}` : accountName;
+  return `otpauth://totp/${encodeURIComponent(label)}?${params.toString()}`;
 }
