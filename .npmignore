@@ -1,28 +1,58 @@
-# Source
+# Source files
+src/
 *.ts
 !*.d.ts
 
 # Tests
 *.test.ts
+*.spec.ts
+__tests__/
+coverage/
 jest.config.js
 
 # Development configs
 tsconfig.json
+.eslintrc*
+.prettierrc*
+.editorconfig
 .gitignore
+.npmignore
 
 # Git
 .git/
+.github/
 
 # IDE
 .vscode/
 .idea/
+*.sublime-*
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Dependencies
-node_modules/ 
+node_modules/
 
+# Build artifacts
+.cache/
+.temp/
+
+# Documentation
 ROADMAP.md
+CHANGELOG.md
+docs/
 
-examples/*
+# Examples and demos
+examples/
+demo/
+
+# Changeset
+.changeset/
+
+# Misc
+.DS_Store
+.env*
+*.pem
