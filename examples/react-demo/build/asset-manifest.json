@@ -1,0 +1,10 @@
+{
+  "files": {
+    "main.js": "/totp-web/static/js/main.f22e69df.js",
+    "index.html": "/totp-web/index.html",
+    "main.f22e69df.js.map": "/totp-web/static/js/main.f22e69df.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.f22e69df.js"
+  ]
+}

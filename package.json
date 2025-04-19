@@ -1,10 +1,17 @@
 {
   "name": "totp-web",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "A web-compatible TOTP (Time-based One-Time Password) implementation using Web Crypto API",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "files": [
     "dist",
     "README.md"

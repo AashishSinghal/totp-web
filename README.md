@@ -39,6 +39,9 @@
 - 🔄 **Real-time Updates**: Generate tokens that update every 30 seconds
 - 📱 **QR Code Support**: Generate QR codes for easy setup with authenticator apps
 - 🧪 **Verification**: Verify tokens with configurable time windows for clock skew
+- 🔐 **Multiple Algorithms**: Support for SHA-1, SHA-256, and SHA-512
+- 🎨 **Custom Character Sets**: Generate tokens with custom character sets
+- 🛡️ **Rate Limiting**: Built-in rate limiting utility to prevent brute force attacks
 
 ## Motivation
 
@@ -86,6 +89,25 @@ console.log('Current TOTP:', result.token); // e.g., "123456"
 console.log('Seconds until next token:', result.remainingSeconds); // e.g., 15
 ```
 
+### Advanced Token Generation
+
+```typescript
+import { generateTOTP } from 'totp-web';
+
+// Generate a TOTP token with custom options
+const result = await generateTOTP({
+  secret: 'JBSWY3DPEHPK3PXP',
+  algorithm: 'SHA-256', // Use SHA-256 instead of default SHA-1
+  digits: 8, // Generate 8-digit token instead of default 6
+  charSet: '0123456789ABCDEF', // Use hexadecimal characters
+  period: 60, // Use 60-second period instead of default 30
+  window: 1 // Allow for 1 period of clock skew
+});
+
+console.log('Current TOTP:', result.token); // e.g., "1A2B3C4D"
+console.log('Seconds until next token:', result.remainingSeconds); // e.g., 45
+```
+
 ### Token Verification
 
 ```typescript
@@ -101,6 +123,15 @@ console.log('Token is valid:', isValid); // true or false
 // Verify with custom window (default is 1)
 // This allows for time skew of ±{window} 30-second periods
 const isValidWithWindow = await verifyTOTP(token, { secret, window: 2 });
+
+// Verify with custom options
+const isValidWithOptions = await verifyTOTP(token, { 
+  secret, 
+  algorithm: 'SHA-256',
+  digits: 8,
+  charSet: '0123456789ABCDEF',
+  period: 60
+});
 ```
 
 ### Generating QR Codes for Authenticator Apps
@@ -113,7 +144,10 @@ const secret = 'JBSWY3DPEHPK3PXP';
 const uri = getTOTPAuthUri({
   secret,
   accountName: 'user@example.com',
-  issuer: 'MyApp'
+  issuer: 'MyApp',
+  algorithm: 'SHA-256',
+  digits: 8,
+  period: 60
 });
 
 // Use this URI with any QR code library
@@ -125,12 +159,45 @@ function QRCodeComponent() {
 }
 ```
 
+### Rate Limiting
+
+```typescript
+import { RateLimiter } from 'totp-web';
+
+// Create a rate limiter with 5 attempts per minute
+const limiter = new RateLimiter(5, 60000);
+
+// Check if a user is rate limited
+function verifyUserInput(userId: string, token: string) {
+  if (limiter.isRateLimited(userId)) {
+    const remainingTime = limiter.getTimeUntilReset(userId);
+    return {
+      success: false,
+      message: `Too many attempts. Please try again in ${Math.ceil(remainingTime / 1000)} seconds.`
+    };
+  }
+  
+  // Proceed with token verification
+  // ...
+  
+  // Reset rate limiter on successful verification
+  limiter.reset(userId);
+  
+  return { success: true };
+}
+
+// Get remaining attempts
+function getRemainingAttempts(userId: string) {
+  return limiter.getRemainingAttempts(userId);
+}
+```
+
 ### Complete Example with React
 
 ```tsx
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { generateTOTP, verifyTOTP, getTOTPAuthUri } from 'totp-web';
+import { generateTOTP, verifyTOTP, getTOTPAuthUri, RateLimiter } from 'totp-web';
 
 function TOTPComponent() {
   const [secret, setSecret] = useState('');
@@ -139,11 +206,18 @@ function TOTPComponent() {
   const [isValid, setIsValid] = useState(null);
   const [qrUri, setQrUri] = useState('');
   const [remainingSeconds, setRemainingSeconds] = useState(30);
+  const [error, setError] = useState('');
+  
+  // Create a rate limiter
+  const limiter = new RateLimiter(5, 60000); // 5 attempts per minute
 
   useEffect(() => {
     // Generate a new secret when component mounts
     const generateNewSecret = async () => {
-      const result = await generateTOTP({});
+      const result = await generateTOTP({
+        algorithm: 'SHA-256',
+        digits: 8
+      });
       setSecret(result.secret);
       setRemainingSeconds(result.remainingSeconds);
       
@@ -151,7 +225,9 @@ function TOTPComponent() {
       setQrUri(getTOTPAuthUri({
         secret: result.secret,
         accountName: 'user@example.com',
-        issuer: 'MyApp'
+        issuer: 'MyApp',
+        algorithm: 'SHA-256',
+        digits: 8
       }));
     };
 
@@ -162,7 +238,11 @@ function TOTPComponent() {
   useEffect(() => {
     const updateToken = async () => {
       if (!secret) return;
-      const result = await generateTOTP({ secret });
+      const result = await generateTOTP({ 
+        secret,
+        algorithm: 'SHA-256',
+        digits: 8
+      });
       setToken(result.token);
       setRemainingSeconds(result.remainingSeconds);
     };
@@ -174,8 +254,29 @@ function TOTPComponent() {
 
   const handleVerify = async () => {
     if (!secret || !verificationToken) return;
-    const result = await verifyTOTP(verificationToken, { secret });
-    setIsValid(result);
+    
+    // Check rate limiting
+    if (limiter.isRateLimited('user')) {
+      const remainingTime = limiter.getTimeUntilReset('user');
+      setError(`Too many attempts. Please try again in ${Math.ceil(remainingTime / 1000)} seconds.`);
+      return;
+    }
+    
+    try {
+      const result = await verifyTOTP(verificationToken, { 
+        secret,
+        algorithm: 'SHA-256',
+        digits: 8
+      });
+      setIsValid(result);
+      
+      // Reset rate limiter on successful verification
+      if (result) {
+        limiter.reset('user');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verification failed');
+    }
   };
 
   return (
@@ -201,11 +302,17 @@ function TOTPComponent() {
       />
       <button onClick={handleVerify}>Verify</button>
       
-      {isValid !== null && (
+      {error && <div style={{ color: 'red' }}>{error}</div>}
+      
+      {isValid !== null && !error && (
         <div style={{ color: isValid ? 'green' : 'red' }}>
           {isValid ? 'Token is valid!' : 'Token is invalid!'}
         </div>
       )}
+      
+      <div>
+        Remaining attempts: {limiter.getRemainingAttempts('user')}
+      </div>
     </div>
   );
 }
@@ -213,33 +320,61 @@ function TOTPComponent() {
 
 ## API Reference
 
-### generateTOTP(options: { secret?: string }): Promise<{ token: string, secret: string, remainingSeconds: number }>
+### generateTOTP(options: TOTPOptions): Promise<TOTPResult>
 
 Generates a TOTP token and related information.
 
-- `options.secret`: Optional Base32 encoded secret key. If not provided, a new secret will be generated.
-- Returns: Promise resolving to an object containing:
-  - `token`: The 6-digit TOTP token
-  - `secret`: The secret used to generate the token
-  - `remainingSeconds`: Seconds until the token expires
+#### TOTPOptions
+- `secret?: string`: Optional Base32 encoded secret key. If not provided, a new secret will be generated.
+- `algorithm?: TOTPAlgorithm`: Hash algorithm to use (default: 'SHA-1'). Options: 'SHA-1', 'SHA-256', 'SHA-512'.
+- `digits?: number`: Number of digits in the token (default: 6).
+- `charSet?: string`: Custom character set for token generation (default: '0123456789').
+- `period?: number`: Time period in seconds (default: 30).
+- `window?: number`: Time window for validation (default: 0).
 
-### verifyTOTP(token: string, options: { secret: string, window?: number }): Promise<boolean>
+#### TOTPResult
+- `token`: The TOTP token
+- `secret`: The secret used to generate the token
+- `remainingSeconds`: Seconds until the token expires
+
+### verifyTOTP(token: string, options: TOTPVerifyOptions): Promise<boolean>
 
 Verifies a TOTP token against a secret.
 
-- `token`: The TOTP token to verify
-- `options.secret`: Base32 encoded secret key
-- `options.window`: Optional time window for validation (default: 1, meaning ±30 seconds)
-- Returns: Promise resolving to boolean indicating if the token is valid
+#### TOTPVerifyOptions
+- `secret`: Base32 encoded secret key
+- `algorithm?: TOTPAlgorithm`: Hash algorithm to use (default: 'SHA-1')
+- `digits?: number`: Number of digits in the token (default: 6)
+- `charSet?: string`: Custom character set for token generation (default: '0123456789')
+- `period?: number`: Time period in seconds (default: 30)
+- `window?: number`: Time window for validation (default: 1, meaning ±30 seconds)
 
-### getTOTPAuthUri(options: { secret: string, accountName: string, issuer?: string }): string
+### getTOTPAuthUri(options: TOTPAuthUriOptions): string
 
 Generates a URI for QR code generation compatible with authenticator apps.
 
-- `options.secret`: Base32 encoded secret key
-- `options.accountName`: The account name to display in the authenticator app
-- `options.issuer`: Optional issuer name to display in the authenticator app
-- Returns: A URI string that can be encoded as a QR code
+#### TOTPAuthUriOptions
+- `secret`: Base32 encoded secret key
+- `accountName`: The account name to display in the authenticator app
+- `issuer?: string`: Optional issuer name to display in the authenticator app
+- `algorithm?: TOTPAlgorithm`: Hash algorithm to use (default: 'SHA-1')
+- `digits?: number`: Number of digits in the token (default: 6)
+- `period?: number`: Time period in seconds (default: 30)
+
+### RateLimiter
+
+A utility class for implementing rate limiting to prevent brute force attacks.
+
+#### Constructor
+- `new RateLimiter(maxAttempts: number = 5, windowMs: number = 60000)`
+  - `maxAttempts`: Maximum number of attempts allowed within the time window (default: 5)
+  - `windowMs`: Time window in milliseconds (default: 60000, which is 1 minute)
+
+#### Methods
+- `isRateLimited(key: string): boolean`: Check if a key is rate limited
+- `reset(key: string): void`: Reset the rate limit for a key
+- `getRemainingAttempts(key: string): number`: Get the number of remaining attempts for a key
+- `getTimeUntilReset(key: string): number`: Get the time in milliseconds until the rate limit resets for a key
 
 ## Examples
 
@@ -248,131 +383,80 @@ Generates a URI for QR code generation compatible with authenticator apps.
 ```typescript
 import { generateTOTP, getTOTPAuthUri } from 'totp-web';
 
-async function setup2FA() {
-  // Generate a new secret for the user
-  const { secret } = await generateTOTP({});
-  
-  // Generate a QR code URI for the user to scan
-  const uri = getTOTPAuthUri({
-    secret,
-    accountName: 'user@example.com',
-    issuer: 'MyApp'
-  });
-  
-  // Store the secret securely (e.g., in your database)
-  // In a real application, this would be encrypted
-  await saveUserSecret(userId, secret);
-  
-  // Return the URI for QR code generation
-  return uri;
-}
+// Generate a new secret for a user
+const { secret } = await generateTOTP({
+  algorithm: 'SHA-256',
+  digits: 8
+});
+
+// Generate a QR code URI for the user to scan
+const uri = getTOTPAuthUri({
+  secret,
+  accountName: 'user@example.com',
+  issuer: 'MyApp',
+  algorithm: 'SHA-256',
+  digits: 8
+});
+
+// Store the secret securely for later verification
+// ...
 ```
 
-### Verifying a User's 2FA Token
+### Verifying User Input with Rate Limiting
 
 ```typescript
-import { verifyTOTP } from 'totp-web';
+import { verifyTOTP, RateLimiter } from 'totp-web';
 
-async function verifyUserToken(userId, token) {
-  // Retrieve the user's secret from your database
-  const secret = await getUserSecret(userId);
+// Create a rate limiter
+const limiter = new RateLimiter(5, 60000); // 5 attempts per minute
+
+async function verifyUserInput(userId: string, token: string, secret: string) {
+  // Check if the user is rate limited
+  if (limiter.isRateLimited(userId)) {
+    const remainingTime = limiter.getTimeUntilReset(userId);
+    return {
+      success: false,
+      message: `Too many attempts. Please try again in ${Math.ceil(remainingTime / 1000)} seconds.`
+    };
+  }
   
-  // Verify the token
-  const isValid = await verifyTOTP(token, { secret });
-  
-  if (isValid) {
-    // Token is valid, proceed with authentication
-    return true;
-  } else {
-    // Token is invalid, authentication failed
-    return false;
+  try {
+    // Verify the token
+    const isValid = await verifyTOTP(token, { 
+      secret,
+      algorithm: 'SHA-256',
+      digits: 8
+    });
+    
+    // Reset rate limiter on successful verification
+    if (isValid) {
+      limiter.reset(userId);
+    }
+    
+    return {
+      success: true,
+      isValid
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Verification failed'
+    };
   }
 }
 ```
 
-### Creating a TOTP Manager Component
+## Security
 
-```tsx
-import React, { useState, useEffect } from 'react';
-import { generateTOTP, verifyTOTP, getTOTPAuthUri } from 'totp-web';
-import { QRCodeSVG } from 'qrcode.react';
+This library uses the Web Crypto API for cryptographic operations, which provides a secure implementation of cryptographic primitives. The TOTP implementation follows the RFC 6238 specification.
 
-function TOTPManager() {
-  const [secret, setSecret] = useState('');
-  const [token, setToken] = useState('');
-  const [remainingSeconds, setRemainingSeconds] = useState(30);
-  const [qrUri, setQrUri] = useState('');
-  
-  // Generate a new secret on component mount
-  useEffect(() => {
-    const init = async () => {
-      const result = await generateTOTP({});
-      setSecret(result.secret);
-      setRemainingSeconds(result.remainingSeconds);
-      
-      setQrUri(getTOTPAuthUri({
-        secret: result.secret,
-        accountName: 'user@example.com',
-        issuer: 'MyApp'
-      }));
-    };
-    
-    init();
-  }, []);
-  
-  // Update token every second
-  useEffect(() => {
-    if (!secret) return;
-    
-    const updateToken = async () => {
-      const result = await generateTOTP({ secret });
-      setToken(result.token);
-      setRemainingSeconds(result.remainingSeconds);
-    };
-    
-    updateToken();
-    const interval = setInterval(updateToken, 1000);
-    return () => clearInterval(interval);
-  }, [secret]);
-  
-  return (
-    <div className="totp-manager">
-      <div className="secret-section">
-        <h3>Your Secret</h3>
-        <code>{secret}</code>
-        <button onClick={() => navigator.clipboard.writeText(secret)}>
-          Copy
-        </button>
-      </div>
-      
-      <div className="qr-section">
-        <h3>Scan QR Code</h3>
-        {qrUri && <QRCodeSVG value={qrUri} size={200} />}
-      </div>
-      
-      <div className="token-section">
-        <h3>Current Token</h3>
-        <div className="token">{token}</div>
-        <div className="countdown">
-          Expires in {remainingSeconds} seconds
-        </div>
-        <div 
-          className="progress-bar"
-          style={{ width: `${(remainingSeconds / 30) * 100}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-```
+### Best Practices
 
-## Security Considerations
-
-- **Secret Storage**: The secret key should be securely stored and transmitted. In a real application, secrets should be encrypted at rest.
-- **Algorithm**: This implementation uses SHA-1 HMAC as specified in RFC 6238.
-- **Time Windows**: The default verification window of ±30 seconds allows for clock skew between the server and client.
-- **Web Crypto API**: The library uses the Web Crypto API for secure cryptographic operations, which is more secure than JavaScript-based implementations.
-- **Client-Side Limitations**: While this library enables client-side TOTP generation, be aware that client-side JavaScript can be manipulated by malicious actors. For highly secure applications, consider using hardware security keys or other more secure 2FA methods.
+1. **Secret Storage**: Always store secrets securely. In a web application, this typically means storing them on the server, not in the client.
+2. **Rate Limiting**: Use the built-in `RateLimiter` class to prevent brute force attacks.
+3. **Algorithm Selection**: For maximum security, use SHA-256 or SHA-512 instead of the default SHA-1.
+4. **Token Length**: Consider using 8-digit tokens instead of 6-digit tokens for increased security.
+5. **Custom Character Sets**: For even more security, use custom character sets with more entropy.
 
 ## License
 

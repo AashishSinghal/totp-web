@@ -10,7 +10,9 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "outDir": "dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "declarationDir": "dist",
+    "declarationMap": true
   },
   "include": ["*.ts"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
