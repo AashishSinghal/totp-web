@@ -1,0 +1,44 @@
+{
+  "name": "totp-web",
+  "version": "1.0.0",
+  "description": "A web-compatible TOTP (Time-based One-Time Password) implementation using Web Crypto API",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "totp",
+    "2fa",
+    "authentication",
+    "web-crypto",
+    "browser"
+  ],
+  "author": "Aashish Singhal",
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "ts-jest": "^29.1.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aashishwork/totp-web.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aashishwork/totp-web/issues"
+  },
+  "homepage": "https://github.com/aashishwork/totp-web#readme"
+} 

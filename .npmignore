@@ -1,0 +1,28 @@
+# Source
+*.ts
+!*.d.ts
+
+# Tests
+*.test.ts
+jest.config.js
+
+# Development configs
+tsconfig.json
+.gitignore
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Dependencies
+node_modules/ 
+
+ROADMAP.md
+
+examples/*
