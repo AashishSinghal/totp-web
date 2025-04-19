@@ -44,7 +44,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: examples/react-demo/dist
+          path: examples/react-demo/build
 
       - name: Deploy to GitHub Pages
         id: deployment
