@@ -381,5 +381,5 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 ---
 
 <div align="center">
-  <p>Made with ❤️ by <a href="https://github.com/yourusername">Your Name</a></p>
+  <p>Made with ❤️ by <a href="https://github.com/AashishSinghal">Aashish Singhhal</a></p>
 </div> 
